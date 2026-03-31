@@ -15,9 +15,32 @@ import { AccessLog } from './access/entities/access-log.entity';
 import { Company } from '../platform/companies/entities/company.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Location, Client, Membership, AccessLog, Company])],
-  controllers: [LocationsController, ClientsController, MembershipsController, AccessController],
-  providers: [LocationsService, ClientsService, MembershipsService, AccessService],
-  exports: [LocationsService, ClientsService, MembershipsService, AccessService],
+  imports: [
+    TypeOrmModule.forFeature([
+      Location,
+      Client,
+      Membership,
+      AccessLog,
+      Company,
+    ]),
+  ],
+  controllers: [
+    LocationsController,
+    ClientsController,
+    MembershipsController,
+    AccessController,
+  ],
+  providers: [
+    LocationsService,
+    ClientsService,
+    MembershipsService,
+    AccessService,
+  ],
+  exports: [
+    LocationsService,
+    ClientsService,
+    MembershipsService,
+    AccessService,
+  ],
 })
 export class GymModule {}

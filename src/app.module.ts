@@ -7,6 +7,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { GymModule } from './modules/gym/gym.module';
 import { HealthModule } from './modules/health/health.module';
+import { UsersModule } from './modules/users/users.module';
+import { AccountingModule } from './modules/accounting/accounting.module';
 import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
 
 @Module({
@@ -20,6 +22,8 @@ import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
     PlatformModule,
     GymModule,
     HealthModule,
+    UsersModule,
+    AccountingModule,
   ],
   controllers: [],
   providers: [

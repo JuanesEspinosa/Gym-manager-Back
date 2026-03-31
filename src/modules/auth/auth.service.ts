@@ -42,7 +42,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password_hash);
+    const isPasswordValid = await bcrypt.compare(
+      loginDto.password,
+      user.password_hash,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -52,6 +55,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
       company_id: user.company_id ?? null,
+      location_ids: user.location_ids ?? [],
     };
 
     const { accessToken, refreshToken } = this.generateTokens(payload);
@@ -86,6 +90,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         company_id: user.company_id ?? null,
+        location_ids: user.location_ids ?? [],
       };
 
       const accessOpts: JwtSignOptions = {

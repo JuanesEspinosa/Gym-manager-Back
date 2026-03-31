@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { TenantId } from '../../../common/decorators/tenant-id.decorator';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { UserRole } from '../../auth/entities/user.entity';
 
 @Controller('v1/gym/locations')
@@ -24,8 +25,12 @@ export class LocationsController {
   constructor(private readonly locationsService: LocationsService) {}
 
   @Get()
-  findAll(@TenantId() companyId: string) {
-    return this.locationsService.findAll(companyId);
+  findAll(@TenantId() companyId: string, @CurrentUser() user: any) {
+    return this.locationsService.findAll(
+      companyId,
+      user.role,
+      user.location_ids,
+    );
   }
 
   @Get(':id')

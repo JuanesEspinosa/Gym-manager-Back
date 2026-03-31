@@ -35,7 +35,11 @@ export class Membership {
   @Column({ type: 'uuid' })
   company_id: string;
 
-  @Column({ type: 'enum', enum: MembershipType, default: MembershipType.MONTHLY })
+  @Column({
+    type: 'enum',
+    enum: MembershipType,
+    default: MembershipType.MONTHLY,
+  })
   type: MembershipType;
 
   @Column({ type: 'date' })

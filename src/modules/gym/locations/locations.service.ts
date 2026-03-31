@@ -1,12 +1,10 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Location } from './entities/location.entity';
 import { CreateLocationDto } from './dto/create-location.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
+import { UserRole } from '../../auth/entities/user.entity';
 
 @Injectable()
 export class LocationsService {
@@ -15,7 +13,12 @@ export class LocationsService {
     private locationRepository: Repository<Location>,
   ) {}
 
-  findAll(companyId: string) {
+  findAll(companyId: string, userRole?: string, userLocationIds?: string[]) {
+    if (userRole === UserRole.ADMIN && userLocationIds?.length) {
+      return this.locationRepository.find({
+        where: userLocationIds.map((id) => ({ id, company_id: companyId })),
+      });
+    }
     return this.locationRepository.find({ where: { company_id: companyId } });
   }
 
