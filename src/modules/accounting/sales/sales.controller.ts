@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
+import { QuerySalesDto } from './dto/query-sales.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -24,10 +25,12 @@ export class SalesController {
   }
 
   @Get()
-  findAll(
-    @TenantId() companyId: string,
-    @Query('location_id') locationId?: string,
-  ) {
-    return this.salesService.findAll(companyId, locationId);
+  findAll(@TenantId() companyId: string, @Query() query: QuerySalesDto) {
+    return this.salesService.findAll(companyId, query);
+  }
+
+  @Get('stats')
+  getStats(@TenantId() companyId: string, @Query() query: QuerySalesDto) {
+    return this.salesService.getStats(companyId, query);
   }
 }

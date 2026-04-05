@@ -57,8 +57,7 @@ export class MembershipsService {
     const membership = await this.membershipRepository.findOne({
       where: { id, company_id: companyId },
     });
-    if (!membership)
-      throw new NotFoundException(`Membership ${id} not found`);
+    if (!membership) throw new NotFoundException(`Membership ${id} not found`);
     await this.membershipRepository.update(id, { is_active: false });
     return { message: 'Membership deactivated' };
   }

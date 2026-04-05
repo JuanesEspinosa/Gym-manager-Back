@@ -11,7 +11,4 @@ export class CreateLocationDto {
   @MaxLength(500)
   address?: string;
 
-  @IsString()
-  @IsOptional()
-  timezone?: string;
 }

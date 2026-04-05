@@ -20,26 +20,35 @@ import { UserRole } from '../auth/entities/user.entity';
 
 @Controller('v1/platform/users')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.COMPANY_OWNER)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get('all')
+  @Roles(UserRole.SUPER_ADMIN)
+  findAllPlatform() {
+    return this.usersService.findAllPlatform();
+  }
+
   @Get()
+  @Roles(UserRole.COMPANY_OWNER)
   findAll(@TenantId() companyId: string) {
     return this.usersService.findAll(companyId);
   }
 
   @Get(':id')
+  @Roles(UserRole.COMPANY_OWNER)
   findOne(@Param('id') id: string, @TenantId() companyId: string) {
     return this.usersService.findOne(id, companyId);
   }
 
   @Post()
+  @Roles(UserRole.COMPANY_OWNER)
   create(@Body() dto: CreateUserDto, @TenantId() companyId: string) {
     return this.usersService.create(dto, companyId);
   }
 
   @Put(':id')
+  @Roles(UserRole.COMPANY_OWNER)
   update(
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
@@ -49,6 +58,7 @@ export class UsersController {
   }
 
   @Put(':id/locations')
+  @Roles(UserRole.COMPANY_OWNER)
   assignLocations(
     @Param('id') id: string,
     @Body() dto: AssignLocationsDto,
@@ -58,6 +68,7 @@ export class UsersController {
   }
 
   @Patch(':id/deactivate')
+  @Roles(UserRole.COMPANY_OWNER)
   deactivate(@Param('id') id: string, @TenantId() companyId: string) {
     return this.usersService.deactivate(id, companyId);
   }

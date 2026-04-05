@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User, UserRole } from '../auth/entities/user.entity';
 import { Location } from '../gym/locations/entities/location.entity';
@@ -21,34 +21,29 @@ export class UsersService {
     private locationRepository: Repository<Location>,
   ) {}
 
-  findAll(companyId: string) {
-    return this.userRepository.find({
-      where: { company_id: companyId, role: UserRole.ADMIN },
-      select: [
-        'id',
-        'email',
-        'role',
-        'location_ids',
-        'is_active',
-        'created_at',
-      ],
+  async findAllPlatform() {
+    const users = await this.userRepository.find({
+      relations: ['company', 'locations'],
+      order: { created_at: 'DESC' },
     });
+    return users.map((u) => this.toResponse(u));
+  }
+
+  async findAll(companyId: string) {
+    const users = await this.userRepository.find({
+      where: { company_id: companyId, role: UserRole.ADMIN },
+      relations: ['locations'],
+    });
+    return users.map((u) => this.toResponse(u));
   }
 
   async findOne(id: string, companyId: string) {
     const user = await this.userRepository.findOne({
       where: { id, company_id: companyId },
-      select: [
-        'id',
-        'email',
-        'role',
-        'location_ids',
-        'is_active',
-        'created_at',
-      ],
+      relations: ['locations'],
     });
     if (!user) throw new NotFoundException(`User ${id} not found`);
-    return user;
+    return this.toResponse(user);
   }
 
   async create(dto: CreateUserDto, companyId: string) {
@@ -57,23 +52,54 @@ export class UsersService {
     });
     if (existing) throw new ConflictException('Email already in use');
 
+    let locations: Location[] = [];
+    if (dto.location_ids?.length) {
+      locations = await this.locationRepository.find({
+        where: dto.location_ids.map((id) => ({ id, company_id: companyId })),
+      });
+      if (locations.length !== dto.location_ids.length) {
+        throw new NotFoundException(
+          'One or more locations not found in this company',
+        );
+      }
+    }
+
     const password_hash = await bcrypt.hash(dto.password, 10);
     const user = this.userRepository.create({
       email: dto.email,
       password_hash,
       role: UserRole.ADMIN,
       company_id: companyId,
-      location_ids: dto.location_ids ?? [],
+      locations,
       is_active: true,
     });
     const saved = await this.userRepository.save(user);
-    const { password_hash: _, ...result } = saved;
-    return result;
+    return this.toResponse(saved);
   }
 
   async update(id: string, dto: UpdateUserDto, companyId: string) {
-    await this.findOne(id, companyId);
-    await this.userRepository.update({ id, company_id: companyId }, dto);
+    const user = await this.userRepository.findOne({
+      where: { id, company_id: companyId },
+      relations: ['locations'],
+    });
+    if (!user) throw new NotFoundException(`User ${id} not found`);
+
+    if (dto.location_ids) {
+      const locations = await this.locationRepository.find({
+        where: dto.location_ids.map((lid) => ({
+          id: lid,
+          company_id: companyId,
+        })),
+      });
+      if (locations.length !== dto.location_ids.length) {
+        throw new NotFoundException(
+          'One or more locations not found in this company',
+        );
+      }
+      user.locations = locations;
+    }
+
+    await this.userRepository.save(user);
     return this.findOne(id, companyId);
   }
 
@@ -82,7 +108,12 @@ export class UsersService {
     dto: AssignLocationsDto,
     companyId: string,
   ) {
-    await this.findOne(id, companyId);
+    const user = await this.userRepository.findOne({
+      where: { id, company_id: companyId },
+      relations: ['locations'],
+    });
+    if (!user) throw new NotFoundException(`User ${id} not found`);
+
     const locations = await this.locationRepository.find({
       where: dto.location_ids.map((lid) => ({
         id: lid,
@@ -94,12 +125,9 @@ export class UsersService {
         'One or more locations not found in this company',
       );
     }
-    await this.userRepository.update(
-      { id, company_id: companyId },
-      {
-        location_ids: dto.location_ids,
-      },
-    );
+
+    user.locations = locations;
+    await this.userRepository.save(user);
     return this.findOne(id, companyId);
   }
 
@@ -110,5 +138,20 @@ export class UsersService {
       { is_active: false },
     );
     return { message: 'User deactivated successfully' };
+  }
+
+  async findByIdWithLocations(id: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { id },
+      relations: ['locations'],
+    });
+  }
+
+  private toResponse(user: User) {
+    const { password_hash, ...rest } = user;
+    return {
+      ...rest,
+      location_ids: (user.locations ?? []).map((l) => l.id),
+    };
   }
 }

@@ -20,9 +20,6 @@ export class Location {
   @Column({ type: 'varchar', length: 500, nullable: true })
   address: string;
 
-  @Column({ type: 'varchar', length: 100, default: 'America/Bogota' })
-  timezone: string;
-
   @ManyToOne(() => Company)
   @JoinColumn({ name: 'company_id' })
   company: Company;

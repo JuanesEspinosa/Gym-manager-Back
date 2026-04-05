@@ -1,15 +1,18 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
-import { Company } from '../../modules/platform/companies/entities/company.entity.js';
-import { License, PlanType } from '../../modules/platform/licenses/entities/license.entity.js';
-import { Location } from '../../modules/gym/locations/entities/location.entity.js';
-import { User, UserRole } from '../../modules/auth/entities/user.entity.js';
-import { Client } from '../../modules/gym/clients/entities/client.entity.js';
+import { Company } from '../../modules/platform/companies/entities/company.entity';
+import {
+  License,
+  PlanType,
+} from '../../modules/platform/licenses/entities/license.entity';
+import { Location } from '../../modules/gym/locations/entities/location.entity';
+import { User, UserRole } from '../../modules/auth/entities/user.entity';
+import { Client } from '../../modules/gym/clients/entities/client.entity';
 import {
   Membership,
   MembershipType,
-} from '../../modules/gym/memberships/entities/membership.entity.js';
+} from '../../modules/gym/memberships/entities/membership.entity';
 
 const dataSource = new DataSource({
   type: 'postgres',
@@ -48,93 +51,151 @@ async function seed() {
 
   // 2. License
   const licenseRepo = dataSource.getRepository(License);
-  const license = licenseRepo.create({
-    plan_type: PlanType.PRO,
-    max_locations: 5,
-    valid_until: new Date('2027-12-31'),
-    is_active: true,
+  let savedLicense = await licenseRepo.findOne({
+    where: { plan_type: PlanType.PRO },
   });
-  const savedLicense = await licenseRepo.save(license);
-  console.log('License created');
+  if (!savedLicense) {
+    savedLicense = await licenseRepo.save(
+      licenseRepo.create({
+        plan_type: PlanType.PRO,
+        max_locations: 5,
+        valid_until: new Date('2027-12-31'),
+        is_active: true,
+      }),
+    );
+    console.log('License created');
+  } else {
+    console.log('License already exists, skipping');
+  }
 
   // 3. Company
   const companyRepo = dataSource.getRepository(Company);
-  const company = companyRepo.create({
-    name: 'Demo Gym',
-    tax_id: '900123456-7',
-    is_active: true,
-    license: savedLicense,
+  let savedCompany = await companyRepo.findOne({
+    where: { tax_id: '900123456-7' },
   });
-  const savedCompany = await companyRepo.save(company);
-  console.log(`Company created: ${savedCompany.name} (id: ${savedCompany.id})`);
+  if (!savedCompany) {
+    savedCompany = await companyRepo.save(
+      companyRepo.create({
+        name: 'Demo Gym',
+        tax_id: '900123456-7',
+        is_active: true,
+        license: savedLicense,
+      }),
+    );
+    console.log(
+      `Company created: ${savedCompany.name} (id: ${savedCompany.id})`,
+    );
+  } else {
+    console.log(
+      `Company already exists: ${savedCompany.name} (id: ${savedCompany.id}), skipping`,
+    );
+  }
 
   // 4. Location
   const locationRepo = dataSource.getRepository(Location);
-  const location = locationRepo.create({
-    name: 'Sede Principal',
-    address: 'Calle 123 #45-67, Bogota',
-    timezone: 'America/Bogota',
-    company_id: savedCompany.id,
+  let savedLocation = await locationRepo.findOne({
+    where: { name: 'Sede Principal', company_id: savedCompany.id },
   });
-  const savedLocation = await locationRepo.save(location);
-  console.log(
-    `Location created: ${savedLocation.name} (id: ${savedLocation.id})`,
-  );
+  if (!savedLocation) {
+    savedLocation = await locationRepo.save(
+      locationRepo.create({
+        name: 'Sede Principal',
+        address: 'Calle 123 #45-67, Bogota',
+        company_id: savedCompany.id,
+      }),
+    );
+    console.log(
+      `Location created: ${savedLocation.name} (id: ${savedLocation.id})`,
+    );
+  } else {
+    console.log(
+      `Location already exists: ${savedLocation.name} (id: ${savedLocation.id}), skipping`,
+    );
+  }
 
   // 5. Admin User
-  const adminUser = userRepo.create({
-    email: 'admin@demogym.com',
-    password_hash: await bcrypt.hash('Admin1234!', 10),
-    role: UserRole.ADMIN,
-    company_id: savedCompany.id,
-    location_ids: [savedLocation.id],
-    is_active: true,
+  const existingAdmin = await userRepo.findOne({
+    where: { email: 'admin@demogym.com' },
   });
-  await userRepo.save(adminUser);
-  console.log('Admin created: admin@demogym.com / Admin1234!');
+  if (!existingAdmin) {
+    const adminUser = userRepo.create({
+      email: 'admin@demogym.com',
+      password_hash: await bcrypt.hash('Admin1234!', 10),
+      role: UserRole.ADMIN,
+      company_id: savedCompany.id,
+      locations: [savedLocation],
+      is_active: true,
+    });
+    await userRepo.save(adminUser);
+    console.log('Admin created: admin@demogym.com / Admin1234!');
+  } else {
+    console.log('Admin already exists, skipping');
+  }
 
   // 6. Company Owner
-  const companyOwner = userRepo.create({
-    email: 'owner@demogym.com',
-    password_hash: await bcrypt.hash('Admin1234!', 10),
-    role: UserRole.COMPANY_OWNER,
-    company_id: savedCompany.id,
-    is_active: true,
+  const existingOwner = await userRepo.findOne({
+    where: { email: 'owner@demogym.com' },
   });
-  await userRepo.save(companyOwner);
-  console.log('Company Owner created: owner@demogym.com / Admin1234!');
+  if (!existingOwner) {
+    const companyOwner = userRepo.create({
+      email: 'owner@demogym.com',
+      password_hash: await bcrypt.hash('Admin1234!', 10),
+      role: UserRole.COMPANY_OWNER,
+      company_id: savedCompany.id,
+      is_active: true,
+    });
+    await userRepo.save(companyOwner);
+    console.log('Company Owner created: owner@demogym.com / Admin1234!');
+  } else {
+    console.log('Company Owner already exists, skipping');
+  }
 
   // 7. Client
   const clientRepo = dataSource.getRepository(Client);
-  const client = clientRepo.create({
-    full_name: 'Juan Perez',
-    email: 'juan@example.com',
-    phone: '3001234567',
-    rfid_code: 'RFID-DEMO-001',
-    company_id: savedCompany.id,
-    is_active: true,
+  let savedClient = await clientRepo.findOne({
+    where: { rfid_code: 'RFID-DEMO-001' },
   });
-  const savedClient = await clientRepo.save(client);
-  console.log(
-    `Client created: ${savedClient.full_name} (RFID: RFID-DEMO-001)`,
-  );
+  if (!savedClient) {
+    savedClient = await clientRepo.save(
+      clientRepo.create({
+        full_name: 'Juan Perez',
+        email: 'juan@example.com',
+        phone: '3001234567',
+        rfid_code: 'RFID-DEMO-001',
+        company_id: savedCompany.id,
+        is_active: true,
+      }),
+    );
+    console.log(
+      `Client created: ${savedClient.full_name} (RFID: RFID-DEMO-001)`,
+    );
+  } else {
+    console.log('Client already exists, skipping');
+  }
 
   // 8. Membership
   const membershipRepo = dataSource.getRepository(Membership);
-  const today = new Date();
-  const endDate = new Date();
-  endDate.setMonth(endDate.getMonth() + 1);
-
-  const membership = membershipRepo.create({
-    client_id: savedClient.id,
-    company_id: savedCompany.id,
-    type: MembershipType.MONTHLY,
-    start_date: today,
-    end_date: endDate,
-    is_active: true,
+  const existingMembership = await membershipRepo.findOne({
+    where: { client_id: savedClient.id, company_id: savedCompany.id },
   });
-  await membershipRepo.save(membership);
-  console.log('Membership created (active for 1 month)');
+  if (!existingMembership) {
+    const today = new Date();
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + 1);
+    await membershipRepo.save(
+      membershipRepo.create({
+        client_id: savedClient.id,
+        company_id: savedCompany.id,
+        type: MembershipType.MONTHLY,
+        start_date: today,
+        end_date: endDate,
+        is_active: true,
+      }),
+    );
+    console.log('Membership created (active for 1 month)');
+  } else {
+    console.log('Membership already exists, skipping');
+  }
 
   console.log('\nSeed completed successfully!');
   console.log('\nCredentials:');
